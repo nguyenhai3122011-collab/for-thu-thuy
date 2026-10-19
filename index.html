@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#030705">
+  <meta name="description" content="Một món quà 20/10 nho nhỏ dành tặng Thùy, phong cách terminal tương tác.">
+  <title>20/10 — Một món quà nhỏ dành cho Thùy</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #030705;
+      --panel: #07100a;
+      --panel-top: #0a150d;
+      --green: #8cff9e;
+      --green-bright: #c0ffca;
+      --green-dim: #79a985;
+      --green-faint: #42684b;
+      --line: #1b4929;
+      --shadow: rgba(37, 255, 97, .12);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { min-width: 320px; background: var(--bg); }
+
+    body {
+      min-height: 100svh;
+      margin: 0;
+      padding: max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(25, 95, 43, .2), transparent 54%),
+        radial-gradient(ellipse at 50% 100%, rgba(11, 44, 21, .18), transparent 52%),
+        var(--bg);
+      color: var(--green);
+      font-family: var(--mono);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body::after {
+      position: fixed;
+      z-index: 5;
+      inset: 0;
+      pointer-events: none;
+      content: "";
+      opacity: .12;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 3px,
+        rgba(114, 255, 143, .045) 4px,
+        transparent 5px
+      );
+    }
+
+    button, input { font: inherit; }
+
+    .page-shell {
+      width: min(100%, 860px);
+      margin: auto;
+    }
+
+    .terminal {
+      overflow: hidden;
+      border: 1px solid #235333;
+      border-radius: 15px;
+      background: linear-gradient(145deg, rgba(8, 18, 11, .98), rgba(4, 10, 6, .99) 65%);
+      box-shadow:
+        0 28px 90px rgba(0, 0, 0, .55),
+        0 0 40px var(--shadow),
+        inset 0 1px rgba(204, 255, 214, .035);
+    }
+
+    .terminal-header {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 22px;
+      border-bottom: 1px solid rgba(54, 119, 70, .35);
+      background: linear-gradient(180deg, rgba(15, 32, 19, .84), rgba(8, 19, 11, .75));
+    }
+
+    .window-dots {
+      width: 62px;
+      flex: 0 0 62px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .window-dots span {
+      width: 9px;
+      height: 9px;
+      border: 1px solid rgba(176, 255, 190, .18);
+      border-radius: 50%;
+      background: #164b27;
+      box-shadow: 0 0 8px rgba(68, 255, 111, .14);
+    }
+
+    .window-dots span:first-child { background: #55ba68; }
+    .window-dots span:nth-child(2) { background: #2e7e43; }
+    .window-dots span:nth-child(3) { background: #1c5930; }
+
+    .brand { min-width: 0; flex: 1; }
+
+    .brand h1 {
+      margin: 0;
+      color: var(--green-bright);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      line-height: 1.4;
+    }
+
+    .brand h1 span { color: #4a9c5c; }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--green-dim);
+      font-size: 10px;
+      letter-spacing: .07em;
+      line-height: 1.4;
+    }
+
+    .system-state {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 7px;
+      color: #82d995;
+      font-size: 10px;
+      letter-spacing: .12em;
+      white-space: nowrap;
+    }
+
+    .system-state .state-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #5dff7d;
+      box-shadow: 0 0 10px rgba(93, 255, 125, .7);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    .terminal-screen { padding: 26px clamp(18px, 5.5vw, 44px) 28px; }
+
+    .screen-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      color: #5b8c65;
+      font-size: 10px;
+      letter-spacing: .12em;
+      line-height: 1.5;
+      text-transform: uppercase;
+    }
+
+    #stage-indicator { color: #78bd85; text-align: right; }
+
+    .log {
+      min-height: 112px;
+      margin-top: 28px;
+    }
+
+    .line {
+      margin: 0 0 13px;
+      color: var(--green);
+      font-size: clamp(14px, 3.7vw, 16px);
+      line-height: 1.75;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .line.question {
+      margin-bottom: 8px;
+      color: var(--green-bright);
+      font-weight: 600;
+    }
+
+    .line.echo { color: #74dc8a; }
+    .line.success { color: #b8ffc3; }
+    .line.warning { color: #caff87; }
+    .line.muted { color: var(--green-dim); font-size: 13px; }
+    .line.message { color: #c7ffd0; }
+
+    .heart-art {
+      display: block;
+      width: max-content;
+      max-width: 100%;
+      margin: 12px auto 19px;
+      color: #63ff89;
+      font-family: var(--mono);
+      font-size: clamp(16px, 4.1vw, 22px);
+      line-height: 1.12;
+      text-shadow: 0 0 13px rgba(68, 255, 115, .44);
+      white-space: pre;
+    }
+
+    .heart-art.binary-heart {
+      margin-top: 16px;
+      color: #7aff95;
+      font-size: clamp(15px, 3.9vw, 20px);
+      line-height: 1.18;
+      letter-spacing: .06em;
+      text-shadow: 0 0 14px rgba(122, 255, 149, .42);
+      animation: binaryPulse 1.1s ease-in-out infinite alternate;
+    }
+
+    @keyframes binaryPulse {
+      from { opacity: .92; filter: brightness(1); }
+      to { opacity: 1; filter: brightness(1.12); }
+    }
+
+    .command-form { margin-top: 23px; }
+    .command-form[hidden], .action-button[hidden] { display: none !important; }
+
+    .command-line {
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 8px 7px 15px;
+      border: 1px solid #255b35;
+      border-radius: 9px;
+      background: rgba(1, 5, 2, .86);
+      box-shadow: inset 0 0 20px rgba(44, 128, 62, .055);
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .command-line:focus-within {
+      border-color: #50bb68;
+      box-shadow: 0 0 0 3px rgba(65, 255, 104, .08), inset 0 0 20px rgba(44, 128, 62, .07);
+    }
+
+    .command-prompt {
+      flex: 0 0 auto;
+      color: #72ed89;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .command-line input {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      flex: 1 1 auto;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--green-bright);
+      caret-color: #72ff8e;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .command-line input::placeholder { color: #56755d; opacity: 1; }
+    .command-line input:disabled { opacity: .55; }
+    .command-line input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+    .command-line input[type="number"]::-webkit-inner-spin-button,
+    .command-line input[type="number"]::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+
+    .send-button {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 44px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #2f7541;
+      border-radius: 7px;
+      background: #0c2914;
+      color: #aaffb8;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+      transition: background .15s ease, transform .15s ease, border-color .15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .send-button:hover:not(:disabled), .action-button:hover {
+      border-color: #71e488;
+      background: #12391d;
+    }
+
+    .send-button:active:not(:disabled), .action-button:active { transform: translateY(1px); }
+    .send-button:disabled { cursor: wait; opacity: .55; }
+
+    .send-button:focus-visible, .action-button:focus-visible {
+      outline: 2px solid #b0ffc0;
+      outline-offset: 3px;
+    }
+
+    .helper-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      min-height: 24px;
+      margin: 9px 2px 0;
+    }
+
+    .helper-row p {
+      margin: 0;
+      color: #83a78a;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .enter-label {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #587d60;
+      font-size: 9px;
+      letter-spacing: .06em;
+      line-height: 1.6;
+    }
+
+    kbd {
+      padding: 2px 5px;
+      border: 1px solid #31543a;
+      border-radius: 4px;
+      color: #8baa90;
+      font: inherit;
+    }
+
+    .actions { margin-top: 17px; }
+
+    .action-button {
+      min-height: 46px;
+      padding: 0 15px;
+      border: 1px solid #2b7040;
+      border-radius: 8px;
+      background: #0b2412;
+      color: #b5ffc2;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .terminal-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 22px;
+      border-top: 1px solid rgba(54, 119, 70, .25);
+      background: rgba(3, 9, 5, .6);
+      color: #54745b;
+      font-size: 9px;
+      letter-spacing: .1em;
+    }
+
+    .footer-heart { color: #70d984; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: .68; box-shadow: 0 0 5px rgba(93, 255, 125, .38); }
+      50% { opacity: 1; box-shadow: 0 0 12px rgba(93, 255, 125, .82); }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: max(12px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+      .terminal { border-radius: 12px; }
+      .terminal-header { min-height: 65px; gap: 9px; padding: 12px 13px; }
+      .window-dots { width: 42px; flex-basis: 42px; gap: 5px; }
+      .window-dots span { width: 8px; height: 8px; }
+      .brand h1 { font-size: 12px; letter-spacing: .12em; }
+      .brand p { font-size: 9px; letter-spacing: .025em; }
+      .system-state { gap: 5px; font-size: 8px; letter-spacing: .08em; }
+      .system-state .state-dot { width: 6px; height: 6px; }
+      .terminal-screen { padding: 21px 16px 24px; }
+      .screen-meta { font-size: 9px; letter-spacing: .07em; }
+      .log { min-height: 88px; margin-top: 22px; }
+      .line { font-size: 14px; line-height: 1.72; }
+      .line.muted { font-size: 12px; }
+      .command-form { margin-top: 20px; }
+      .command-line { min-height: 58px; gap: 9px; padding-left: 12px; }
+      .send-button { width: 44px; height: 44px; flex-basis: 44px; }
+      .helper-row { gap: 8px; }
+      .helper-row p { font-size: 10px; }
+      .enter-label { display: none; }
+      .terminal-footer { padding: 12px 14px; font-size: 8px; }
+    }
+
+    @media (max-width: 360px) {
+      .terminal-header { gap: 7px; }
+      .window-dots { width: 35px; flex-basis: 35px; gap: 4px; }
+      .window-dots span { width: 7px; height: 7px; }
+      .brand h1 { font-size: 11px; }
+      .system-state { font-size: 7px; }
+      .terminal-screen { padding-inline: 13px; }
+      .screen-meta { font-size: 8px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <main class="terminal" aria-labelledby="terminal-title">
+      <header class="terminal-header">
+        <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="brand">
+          <h1 id="terminal-title">THÙY <span>/</span> 20.10</h1>
+          <p>một món quà nhỏ từ Hải</p>
+        </div>
+        <div class="system-state" aria-label="Hệ thống đang sẵn sàng">
+          <span class="state-dot" aria-hidden="true"></span><span>ONLINE</span>
+        </div>
+      </header>
+
+      <section class="terminal-screen" aria-label="Lời chúc tương tác">
+        <div class="screen-meta" aria-hidden="true">
+          <span>THUY@GIFT:~$</span>
+          <span id="stage-indicator">ĐANG KHỞI ĐỘNG</span>
+        </div>
+
+        <div id="log" class="log" aria-hidden="true"></div>
+        <p id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+        <form id="command-form" class="command-form" autocomplete="off" novalidate hidden>
+          <label id="command-label" class="sr-only" for="command-input">Nhập câu trả lời</label>
+          <div class="command-line">
+            <span class="command-prompt" aria-hidden="true">&gt;</span>
+            <input id="command-input" name="command" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="input-hint" placeholder="nhập câu trả lời">
+            <button id="send-button" class="send-button" type="submit" aria-label="Gửi câu trả lời"><span aria-hidden="true">↵</span></button>
+          </div>
+          <div class="helper-row">
+            <p id="input-hint">Nhập câu trả lời rồi nhấn Enter.</p>
+            <span class="enter-label" aria-hidden="true"><kbd>ENTER</kbd> GỬI</span>
+          </div>
+        </form>
+
+        <div class="actions">
+          <button id="retry-button" class="action-button" type="button" hidden>↻ Chơi lại phần đoán số</button>
+          <button id="restart-button" class="action-button" type="button" hidden>↻ Chơi lại từ đầu</button>
+        </div>
+      </section>
+
+      <footer class="terminal-footer">
+        <span>GỬI BẰNG <span class="footer-heart">♥</span> DÀNH RIÊNG CHO THÙY</span>
+        <span>20 · 10</span>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const form = document.getElementById("command-form");
+      const input = document.getElementById("command-input");
+      const sendButton = document.getElementById("send-button");
+      const hint = document.getElementById("input-hint");
+      const label = document.getElementById("command-label");
+      const log = document.getElementById("log");
+      const liveRegion = document.getElementById("live-region");
+      const stageIndicator = document.getElementById("stage-indicator");
+      const retryButton = document.getElementById("retry-button");
+      const restartButton = document.getElementById("restart-button");
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const HEART = [
+        "  ♥♥♥   ♥♥♥",
+        " ♥♥♥♥♥ ♥♥♥♥♥",
+        "♥♥♥♥♥♥♥♥♥♥♥♥♥",
+        " ♥♥♥♥♥♥♥♥♥♥♥",
+        "  ♥♥♥♥♥♥♥♥♥",
+        "   ♥♥♥♥♥♥♥",
+        "    ♥♥♥♥♥",
+        "     ♥♥♥",
+        "      ♥"
+      ].join("\n");
+
+      const WISH = "Chào bạn Thùy nhé, mình là Hải đây. Chúc bạn Thùy có một ngày 20 tháng 10 thật vui vẻ nhé, chúc Thùy học giỏi và đạt nhiều thành tích cao nhé !";
+      const TYPE_DELAY = reduceMotion ? 0 : 12;
+      const HEART_ROW_DELAY = reduceMotion ? 0 : 65;
+      const BINARY_HEART_TEMPLATE = [
+        "  ***   ***  ",
+        " ***** ***** ",
+        "*************",
+        " *********** ",
+        "  *********  ",
+        "   *******   ",
+        "    *****    ",
+        "     ***     ",
+        "      *      "
+      ];
+      const BINARY_HEART_INTERVAL = reduceMotion ? 700 : 520;
+      let binaryHeartTimer = null;
+
+      let stage = "boot";
+      let busy = false;
+      let guesses = 0;
+      let secretNumber = randomNumber();
+
+      function randomNumber() {
+        return Math.floor(Math.random() * 100) + 1;
+      }
+
+      function pause(ms) {
+        return new Promise(resolve => window.setTimeout(resolve, ms));
+      }
+
+      function addLine(className = "") {
+        const line = document.createElement("p");
+        line.className = `line${className ? ` ${className}` : ""}`;
+        log.appendChild(line);
+        return line;
+      }
+
+      async function typeLine(text, className = "", delay = TYPE_DELAY) {
+        const line = addLine(className);
+        const visualText = document.createElement("span");
+        visualText.setAttribute("aria-hidden", "true");
+        line.appendChild(visualText);
+
+        for (const character of text) {
+          visualText.textContent += character;
+          if (delay > 0) await pause(delay);
+        }
+
+        visualText.removeAttribute("aria-hidden");
+        liveRegion.textContent = text;
+        return line;
+      }
+
+      async function typeHeart() {
+        const art = document.createElement("pre");
+        art.className = "heart-art";
+        art.setAttribute("aria-hidden", "true");
+        log.appendChild(art);
+
+        for (const row of HEART.split("\n")) {
+          art.textContent += `${row}\n`;
+          if (HEART_ROW_DELAY > 0) await pause(HEART_ROW_DELAY);
+        }
+        liveRegion.textContent = "Một hình trái tim được in bằng ký tự.";
+      }
+
+      function makeBinaryHeartText() {
+        return BINARY_HEART_TEMPLATE.map(row =>
+          [...row].map(ch => ch === "*" ? (Math.random() < 0.5 ? "0" : "1") : " ").join("")
+        ).join("\n");
+      }
+
+      async function printBinaryHeart() {
+        const art = document.createElement("pre");
+        art.className = "heart-art binary-heart";
+        art.setAttribute("aria-hidden", "true");
+        art.textContent = makeBinaryHeartText();
+        log.appendChild(art);
+        art.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+        liveRegion.textContent = "Một hình trái tim bằng số 0 và 1 đang nhấp nháy dành cho Thùy.";
+      }
+
+      function startBinaryHeartLoop() {
+        if (binaryHeartTimer) clearInterval(binaryHeartTimer);
+        binaryHeartTimer = window.setInterval(() => {
+          if (stage !== "done") {
+            clearInterval(binaryHeartTimer);
+            binaryHeartTimer = null;
+            return;
+          }
+          printBinaryHeart();
+        }, BINARY_HEART_INTERVAL);
+      }
+
+      function configureStage(nextStage) {
+        stage = nextStage;
+        retryButton.hidden = stage !== "failed";
+        restartButton.hidden = stage !== "done";
+        form.hidden = stage === "failed" || stage === "done";
+        input.disabled = true;
+        sendButton.disabled = true;
+
+        const settings = {
+          riddle: {
+            indicator: "ĐỐ VUI · 01/03",
+            type: "text",
+            inputmode: "text",
+            placeholder: "nhập đáp án",
+            maxlength: "60",
+            label: "Nhập đáp án câu đố vui, viết liền không dấu và không viết hoa",
+            hint: "Đáp án viết liền, không dấu, không viết hoa. Nhấn Enter để gửi."
+          },
+          next: {
+            indicator: "LỜI CHÚC · 02/03",
+            type: "text",
+            inputmode: "text",
+            placeholder: "gõ next",
+            maxlength: "20",
+            label: "Nhập next để tiếp tục",
+            hint: "Nhập next để mở trò chơi đoán số."
+          },
+          guess: {
+            indicator: "ĐOÁN SỐ · 03/03",
+            type: "number",
+            inputmode: "numeric",
+            placeholder: "1–100",
+            maxlength: null,
+            label: "Nhập một số nguyên từ 1 đến 100",
+            hint: "Nhập số từ 1 đến 100. Bạn có tối đa 9 lượt."
+          },
+          gift: {
+            indicator: "CÂU HỎI CUỐI",
+            type: "text",
+            inputmode: "text",
+            placeholder: "Y / N",
+            maxlength: "4",
+            label: "Bạn có thích món quà này không? Nhập Y hoặc N",
+            hint: "Nhập Y (yes) hoặc N (no), không phân biệt chữ hoa/thường."
+          }
+        };
+
+        if (!settings[stage]) return;
+        const current = settings[stage];
+        stageIndicator.textContent = current.indicator;
+        input.type = current.type;
+        input.inputMode = current.inputmode;
+        input.placeholder = current.placeholder;
+        if (current.maxlength === null) input.removeAttribute("maxlength");
+        else input.maxLength = Number(current.maxlength);
+        input.setAttribute("aria-label", current.label);
+        label.textContent = current.label;
+        hint.textContent = current.hint;
+      }
+
+      function unlockInput() {
+        if (stage === "failed" || stage === "done" || stage === "boot") return;
+        input.disabled = false;
+        sendButton.disabled = false;
+        form.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+        input.focus({ preventScroll: true });
+      }
+
+      async function boot() {
+        busy = true;
+        if (binaryHeartTimer) {
+          clearInterval(binaryHeartTimer);
+          binaryHeartTimer = null;
+        }
+        stageIndicator.textContent = "ĐANG KHỞI ĐỘNG";
+        form.hidden = true;
+        retryButton.hidden = true;
+        restartButton.hidden = true;
+        log.replaceChildren();
+        liveRegion.textContent = "";
+        guesses = 0;
+        secretNumber = randomNumber();
+
+        await typeLine(
+          "Câu nói gì thường hay nói khi tỏ tình một ai đó (viết liền không dấu không viết hoa)",
+          "question"
+        );
+        configureStage("riddle");
+        busy = false;
+        unlockInput();
+      }
+
+      async function echoCommand(value) {
+        await typeLine(`> ${value}`, "echo", reduceMotion ? 0 : 7);
+      }
+
+      async function showGiftQuestion() {
+        configureStage("gift");
+        await typeLine("Bạn có thích món quà này không? Nhập Y (yes) hoặc N (no), không phân biệt chữ hoa chữ thường.", "question");
+        liveRegion.textContent = "Bạn có thích món quà này không? Nhập Y hoặc N. Không phân biệt chữ hoa, chữ thường.";
+      }
+
+      async function handleRiddle(value) {
+        await echoCommand(value);
+        if (value !== "tothichcau") {
+          await typeLine("Chưa đúng rồi, Thùy thử lại nhé!", "warning");
+          return;
+        }
+
+        await typeLine("Chính xác! Đang mở lời nhắn dành riêng cho Thùy...", "success");
+        await typeHeart();
+        await typeLine(WISH, "message");
+        await typeLine("Nhập next để tiếp tục nhé.", "muted");
+        configureStage("next");
+      }
+
+      async function handleNext(value) {
+        await echoCommand(value);
+        if (value.toLowerCase() !== "next") {
+          await typeLine("Mình đợi bạn nhập next để tiếp tục nhé.", "warning");
+          return;
+        }
+
+        guesses = 0;
+        secretNumber = randomNumber();
+        await typeLine("Trò chơi đoán số bắt đầu! Mình đã chọn một số nguyên từ 1 đến 100.", "success");
+        await typeLine("Hãy đoán đúng trong tối đa 9 lượt để mở câu hỏi cuối nhé.", "muted");
+        configureStage("guess");
+      }
+
+      async function handleGuess(value) {
+        const guess = Number(value);
+        if (!Number.isInteger(guess) || guess < 1 || guess > 100) {
+          await typeLine("Bạn hãy nhập một số nguyên từ 1 đến 100 nhé. Lượt này không bị trừ.", "warning");
+          return;
+        }
+
+        guesses += 1;
+        await echoCommand(String(guess));
+
+        if (guess === secretNumber) {
+          await typeLine(`Chính xác! Bạn đoán đúng sau ${guesses} lần đoán. Qua màn thành công!`, "success");
+          await showGiftQuestion();
+          return;
+        }
+
+        if (guess > secretNumber) {
+          await typeLine("Quá lớn! Hãy thử một số nhỏ hơn.", "warning");
+        } else {
+          await typeLine("Quá nhỏ! Hãy thử một số lớn hơn.", "warning");
+        }
+
+        if (guesses >= 9) {
+          await typeLine(`Bạn đã dùng hết 9 lượt. Số bí mật là ${secretNumber}; thử lại một ván mới nhé.`, "warning");
+          stage = "failed";
+          stageIndicator.textContent = "THỬ LẠI · ĐOÁN SỐ";
+          form.hidden = true;
+          retryButton.hidden = false;
+          retryButton.focus({ preventScroll: true });
+        } else {
+          hint.textContent = `Lượt ${guesses}/9 đã dùng. Còn ${9 - guesses} lượt đoán.`;
+        }
+      }
+
+      async function handleGift(value) {
+        await echoCommand(value);
+        const answer = value.toLowerCase();
+        if (answer !== "y" && answer !== "n") {
+          await typeLine("Bạn chỉ cần nhập Y (yes) hoặc N (no) nhé.", "warning");
+          return;
+        }
+
+        if (answer === "y") {
+          await typeLine("Mình vui lắm! Cảm ơn Thùy đã thích món quà nhỏ này nhé 💚", "success");
+          await typeLine("Chúc Thùy luôn vui vẻ, tự tin và rạng rỡ!", "message");
+        } else {
+          await typeLine("Không sao đâu Thùy ơi! Hải vẫn chúc Thùy có một ngày 20/10 thật vui vẻ nhé 💚", "message");
+        }
+
+        stage = "done";
+        stageIndicator.textContent = "HOÀN TẤT · 20/10";
+        form.hidden = true;
+        retryButton.hidden = true;
+        restartButton.hidden = true;
+        await typeLine("Tặng Thùy trái tim nhấp nháy bằng 0 và 1 — lặp lại mãi dành riêng cho Thùy:", "muted");
+        await printBinaryHeart();
+        startBinaryHeartLoop();
+      }
+
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (busy || stage === "boot" || stage === "failed" || stage === "done") return;
+
+        const value = input.value.trim();
+        if (!value) {
+          busy = true;
+          input.disabled = true;
+          sendButton.disabled = true;
+          await typeLine("Bạn nhập câu trả lời rồi nhấn Enter nhé.", "warning");
+          busy = false;
+          unlockInput();
+          return;
+        }
+
+        busy = true;
+        input.disabled = true;
+        sendButton.disabled = true;
+        input.value = "";
+
+        try {
+          if (stage === "riddle") await handleRiddle(value);
+          else if (stage === "next") await handleNext(value);
+          else if (stage === "guess") await handleGuess(value);
+          else if (stage === "gift") await handleGift(value);
+        } finally {
+          busy = false;
+          unlockInput();
+        }
+      });
+
+      retryButton.addEventListener("click", async () => {
+        if (busy || stage !== "failed") return;
+        busy = true;
+        retryButton.disabled = true;
+        retryButton.hidden = true;
+        guesses = 0;
+        secretNumber = randomNumber();
+        await typeLine("Ván mới bắt đầu. Mình đã chọn một số khác từ 1 đến 100 nhé!", "success");
+        configureStage("guess");
+        retryButton.disabled = false;
+        busy = false;
+        unlockInput();
+      });
+
+      restartButton.addEventListener("click", () => {
+        if (busy) return;
+        boot();
+      });
+
+      boot();
+    })();
+  </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
